@@ -1,0 +1,797 @@
+
+@{
+    ViewBag.Title = "Home";
+    Layout = "~/Shared/_AdminMaster.cshtml";
+}
+
+<!doctype html>
+<html>
+<head>
+</head>
+
+<body>
+
+    <script type="text/javascript">
+        $('#liInfo').addClass("currentitem");
+        var SplitAjith;
+        
+        $(document).ready(function () {
+            $(document).mouseup(function (e) {
+                $("#innersetting").hide();
+            });
+            $("#lishiftDetails").click(function () {
+                $('#liInfo').addClass("currentitem");
+                //$('#liUpload').removeClass("currentitem");
+                $('#liRegistration').removeClass("currentitem");
+                $('#liJobscheduling').removeClass("currentitem");
+            });
+            $("#tbllogReport").hide();
+            $("#btnSave").hide();
+            $("#btnClear").hide();
+            localStorage.clear();
+                   $("#ddlMonths").click(function ()
+                   {
+                       $("#diverror").text("");
+                       $("#divMonths").removeClass("ErrorFocus");
+                   });
+                   $("#ddlYears").click(function () {
+                       $("#diverror").text("");
+                       $("#divYears").removeClass("ErrorFocus");
+                   });
+                   $("#txtdate").click(function () {
+                       $("#divdate").removeClass("ErrorFocus");
+                       $("#lblMessageChangePwd").text("");
+                   });
+                   $("#txttime").click(function () {
+                       $("#divtime").removeClass("ErrorFocus");
+                       $("#lblMessageChangePwd").text("");
+                   });
+
+                   var ddlYear = '@System.Configuration.ConfigurationManager.AppSettings["Years"]';
+                   for (var i = ddlYear; i <= 2020; i++) {
+                       $("#ddlYears").append('<option value=' + i + '>' + i + '</option>');
+                   }
+
+                   $('#btnsubmit').click(function ()
+                   {
+                       $("#diverror").text("");
+                       var monthVal = $("#ddlMonths option:selected").val();
+                       var yearVal = $("#ddlYears option:selected").val();
+                       localStorage.setItem("Monthval", monthVal);
+                       localStorage.setItem("Yearval", yearVal);
+                       if (Validate("Shiftdetails")) {
+                           $.ajax({
+                               type: "POST",
+                               url: "/UploadExcelSheet/GetShiftDetails",
+                               data: { MonthVal: monthVal, YearVal: yearVal },
+                               success: function (response) {
+                                   if (response.flag == -1)
+                                   {
+                                       $("#diverror").text("No Record Found");
+                                     //  alert("No Record Found");
+                                       $("#ddlYears").val("");
+                                       $("#ddlMonths").val("");
+                                       $("#tbllogReport").hide();
+                                       //location.reload(true);
+
+                                   }
+                                   else if (response.flag == -2)
+                                   {
+                                       $("#diverror").text("some error occurs");
+                                       //alert("some error occurs");
+
+                                   }
+                                   else
+                                   {
+                                       $("#diverror").text("");
+                                       var ShiftDetails = $.parseJSON(response.result);
+
+                                       $("#tbllogReport").show();
+                                       BindShiftDetails(ShiftDetails);
+                                   }
+                                   
+
+                               },
+                               failure: function (response) {
+
+                               },
+                               error: function (response) {
+
+                               }
+                           });
+                       }
+                   });
+
+
+                   $("#btnUpdate").click(function () {
+
+                       var ExistingStartTime=localStorage.getItem("ShiftStarTime");
+                       var ExistingEndTime = localStorage.getItem("ShiftEndTime");
+                       var OldShiftType = localStorage.getItem("OldShiftType");
+                       var Team = localStorage.getItem("Team");
+                       var NewShiftType = $("#ddlshifttype option:selected").val();
+                       var id=localStorage.getItem("Id");
+                       var NewSatrtTime;
+                       var StartDate = $("#txtdate").val();
+
+                       switch (NewShiftType) {
+                           case "1":
+                               NewSatrtTime = "23:59:59";
+                               break;
+                           case "2":
+                               NewSatrtTime = $("#txttime").val();
+                               break;
+                           case "3":
+                               NewSatrtTime = "23:59:58";
+                               break;
+                           case "4":
+                               NewSatrtTime = "23:59:57";
+                               break;
+                           case "5":
+                               NewSatrtTime = "23:59:56";
+                               break;
+                           case "6":
+                               NewSatrtTime = "23:59:55";
+                               break;
+                           case "7":
+                               NewSatrtTime = "23:59:54";
+                               break;
+                           case "8":
+                               NewSatrtTime = "23:59:53";
+                               break;
+                       }
+
+
+                       if (Validate("Update"))
+                       {
+                           $('#loader').html('<img src="../Images/loading.gif" width="18" height="18" alt="" />');
+                           $.ajax({
+                               type: "POST",
+                               url: "/UploadExcelSheet/UpdateEmpShiftDetails",
+                               data: { Id: id, OldStartTime: ExistingStartTime, OldEndTime: ExistingEndTime, oldShiftType: OldShiftType, newSatrtTime: NewSatrtTime, newStartDate: StartDate, newShiftType: NewShiftType, ShiftTeam: Team },
+                               success: function (response) {
+                                   $('#loader').html('');
+                                   if (response.flag == 1) {
+                                      // alert("Requested for updating");
+                                       $("#lblMessage").text("Requested for updating");
+                                       //$("#divcontent").show();
+                                       //$("#divpopup").fadeOut();
+                                       //$("#divcontent").css("filter", "blur(0px)");
+                                       //$("#divcontent").prop('disabled', false);
+                                       
+                                   }
+
+
+
+                               },
+                               failure: function (response) {
+
+                               },
+                               error: function (response) {
+
+                               }
+                           });
+                       }
+                   });
+
+                   $("#btnAddShift").click(function () {
+                       $("#lblMessage").text("");
+                       //$("#txtdate").val("");
+                       //$("#txttime").val("");
+                       $("#btnAddShift").hide();
+                       $("#btnUpdate").hide();
+                       $("#btnSave").show();
+                       $("#btnClear").show();
+                   });
+                   $("#btnClear").click(function () {
+                       $("#btnClear").hide();
+                       $("#btnSave").hide();
+                       $("#btnAddShift").show();
+                       $("#btnUpdate").show();
+                       $("#btnDelete").show();
+                       
+                       
+                   });
+                   $("#btnSave").click(function () {
+                      
+                       var EmpName = $("#idtextName").val();
+                       var Team = localStorage.getItem("Team");
+                       var ShiftType = $("#ddlshifttype option:selected").text();
+                       var ShiftTypeId = $("#ddlshifttype option:selected").val();
+                       var SatrtTime;
+                       var StartDate = $("#txtdate").val();
+
+                       switch (ShiftTypeId) {
+                           case "1":
+                               SatrtTime = "23:59:59";
+                               break;
+                           case "2":
+                               SatrtTime = $("#txttime").val();
+                               break;
+                           case "3":
+                               SatrtTime = "23:59:58";
+                               break;
+                           case "4":
+                               SatrtTime = "23:59:57";
+                               break;
+                           case "5":
+                               SatrtTime = "23:59:56";
+                               break;
+                           case "6":
+                               SatrtTime = "23:59:55";
+                               break;
+                           case "7":
+                              SatrtTime = "23:59:54";
+                               break;
+                           case "8":
+                               SatrtTime = "23:59:53";
+                               break;
+                       }
+
+                       if (Validate("Update"))
+                       {
+                           $('#loader').html('<img src="../Images/loading.gif" width="18" height="18" alt="" />');
+                           $.ajax({
+                               type: "POST",
+                               url: "/UploadExcelSheet/InsertDoubleShift",
+                               data: { empName: EmpName, newSatrtTime: SatrtTime, newStartDate: StartDate, newShiftType: Team, shiftTypeId: ShiftTypeId },
+                               success: function (response) {
+                                   $('#loader').html('');
+                                   if (response.returnvalue == -1) {
+                                     
+                                      // $("lblMessageChangePwd").text("Excel File Already Uploaded");
+                                   }
+                                   else {
+                                       //$("lblMessageChangePwd").text("Successfully Inserted");
+                                      // alert("Successfully Inserted");
+                                       reloadShiftDetails();
+                                       $("#btnAddShift").show();
+                                       $("#btnSave").hide();
+                                       $("#btnClear").hide();
+                                       $("#btnUpdate").show();
+                                       //location.reload(true);
+                                   }
+
+
+
+                               },
+                               failure: function (response) {
+
+                               },
+                               error: function (response) {
+
+                               }
+                           });
+
+                       }
+
+                   });
+                   $("#btnDelete").click(function () {
+                       var id = localStorage.getItem("Id");
+                       $('#loader').html('<img src="../Images/loading.gif" width="18" height="18" alt="" />');
+                       $.ajax({
+                           type: "POST",
+                           url: "/UploadExcelSheet/DeleteEmpShiftDetails",
+                           data: { Id: id, },
+                           success: function (response) {
+                               $('#loader').html('');
+                               if (response.flag == 1) {
+                                   reloadShiftDetails();
+                                   $("#btnAddShift").show();
+                                   $("#btnSave").hide();
+                                   $("#btnClear").hide();
+                                   $("#btnUpdate").show();
+                                   //$("lblMessageChangePwd").text("Successfully Deleted");
+                                   //alert("Successfully Deleted");
+                                   //location.reload(true);
+                                   //localStorage.clear();
+                               }
+
+
+
+                           },
+                           failure: function (response) {
+
+                           },
+                           error: function (response) {
+
+                           }
+                       });
+                   })
+
+               });
+
+
+        function BindShiftDetails(ShiftDetails) {
+            var entry;
+            var Colname;
+            var count;
+            var datecount;
+            var splitcolHead;
+            $('#tbllogReport > tbody').children("tr:gt(1)").remove();
+            if (ShiftDetails["Result"] == undefined || ShiftDetails["Result"] == null) {
+                entry = ShiftDetails[0];
+                count = 0;
+                datecount=0;
+                var htmlTextPost = "";
+                var employeeCount = '@System.Configuration.ConfigurationManager.AppSettings["EmployeeCount"]';
+                
+                htmlTextPost += '<table width="1500px"><tr class="SSgridheaderbg"><td rowspan="2" width="8%" class="SSdatehead">Date</td> <td colspan="2" class="SSdateheadAPP">APP Support</td><td colspan="3" class="SSdateheadDBA">DBA</td><td colspan="3" class="SSdateheadINFO">Informatica</td><td colspan="6" class="SSdateheadMONI">Monitoring</td> </tr>';
+                htmlTextPost += '<tr class="SSgridheaderbg">';
+               
+                $.each(ShiftDetails, function (key, value) {
+                    $.each(value, function (key1, value1) {
+                        if (count <= employeeCount)
+                        {
+                            var splitcolHead = key1.split('|');
+
+                            if (splitcolHead[0] == "DBA" && splitcolHead.length == 2)
+                            {
+                                htmlTextPost += '<td class="SSdateheadDBAsub">' + splitcolHead[1] + '</td>';
+                            }
+                            else if(splitcolHead[0] == "Informatica" && splitcolHead.length == 2)
+                            {
+                                htmlTextPost += '<td class="SSdateheadINFOsub">' + splitcolHead[1] + '</td>';
+                            }
+                            else if (splitcolHead[0] == "App Support" && splitcolHead.length == 2) {
+                                htmlTextPost += '<td class="SSdateheadAPPsub">' + splitcolHead[1] + '</td>';
+                            }
+                            else if (splitcolHead[0] == "Monitoring" && splitcolHead.length == 2)
+                               {
+                                htmlTextPost += '<td class="SSdateheadMONIsub">' + splitcolHead[1] + '</td>';
+                               }
+                        }
+                        count++;
+                        
+                       
+                    });
+                    
+                });
+                htmlTextPost += '</tr>';
+                htmlTextPost += '  <tr class="SSgridheaderbg1">';
+                $.each(ShiftDetails, function (datekey, datevalue) {
+                   // datecount = 0;
+                    $.each(datevalue, function (datekey1, datevalue1) {
+                        if ( datevalue1 != null)
+                        {
+                            if (datevalue1.indexOf('/') > -1)
+                            {
+                                var doubleshift = datevalue1.split('/');
+                              
+                               var doublesplitdate = doubleshift[0].split('|');    
+                               var doublesplitdate1 = doubleshift[1].split('|');
+                               var doubleshiftnight = "";
+                               var doubleshiftnight1 = "";
+                               if (doublesplitdate[2].trim() == "N")
+                               {
+                                   doubleshiftnight = "fa-moon";
+                               }
+                               else
+                               {
+                                   doubleshiftnight = "fa-sun";
+                               }
+                               if (doublesplitdate1[2].trim() == "N") {
+                                   doubleshiftnight1 = "fa-moon";
+                               }
+                               else {
+                                   doubleshiftnight1 = "fa-sun";
+                               }
+                               htmlTextPost += '<td class="SSdateheadtime"><a href="#" class="hreflink"  onclick="UpdateShiftDetails(' + doublesplitdate[1] + ')"> <i class="fas ' + doubleshiftnight + '"></i>' + doublesplitdate[0] + '</a>';
+                               htmlTextPost += '<a href="#" class="hreflink"  onclick="UpdateShiftDetails(' + doublesplitdate1[1] + ')"> <i class="fas ' + doubleshiftnight1 + '"></i>' + doublesplitdate1[0] + '</a></td>';
+                             
+                               
+                            }
+                            else
+                            {
+                                var splitDate = datevalue1.split('|');
+                              
+                                if (splitDate.length == 2)
+                                {
+
+
+                                    htmlTextPost += '<td align="center" valign="middle" class="SSdateheadday"><p>' + splitDate[1] + '</p>' + splitDate[0] + '</td>';
+                                }
+
+                                
+                                if (splitDate.length == 3 && (splitDate[0].trim() != "OFF" && splitDate[0].trim() != "RH" && splitDate[0].trim() != "Leave" && splitDate[0].trim() != "Comp-OFF" && splitDate[0].trim() != "NH" && splitDate[0].trim() != "WH" && splitDate[0].trim() != "FH")) {
+
+                                    if (splitDate[2].trim() == "D") {
+                                        htmlTextPost += '<td class="SSdateheadtime"><a href="#" class="hreflink"  onclick="UpdateShiftDetails(' + splitDate[1] + ')"> <i class="fas fa-sun"></i>' + splitDate[0] + '</a></td>';
+                                    }
+                                    else if (splitDate[2].trim() == "N") {
+                                        htmlTextPost += '<td class="SSdateheadtime"><a href="#" class="hreflink"  onclick="UpdateShiftDetails(' + splitDate[1] + ')"> <i class="fas fa-moon"></i>' + splitDate[0] + '</a></td>';
+                                    }
+
+                                }
+
+                                if (splitDate.length == 3 && splitDate[0].trim() == "OFF") {
+
+                                    htmlTextPost += '<td class="SSdateheadoff"><a href="#" class="hreflink"  onclick="UpdateShiftDetails(' + splitDate[1] + ')">' + splitDate[0] + '</a></td>';
+                                }
+                                if (splitDate.length == 3 && splitDate[0].trim() == "RH") {
+                                    htmlTextPost += '<td class="SSdateheadHoliday"><a href="#" class="hreflink"  onclick="UpdateShiftDetails(' + splitDate[1] + ')"></i>' + splitDate[0] + '</a></td>';
+                                }
+                                if (splitDate.length == 3 && splitDate[0].trim() == "Leave") {
+                                    htmlTextPost += '<td class="SSdateheadleave"><a href="#" class="hreflink"  onclick="UpdateShiftDetails(' + splitDate[1] + ')">' + splitDate[0] + '</a></td>';
+                                }
+                                if (splitDate.length == 3 && splitDate[0].trim() == "Comp-OFF") {
+                                    htmlTextPost += '<td class="SSdateheadcompoff"><a href="#" class="hreflink"  onclick="UpdateShiftDetails(' + splitDate[1] + ')">' + splitDate[0] + '</a></td>';
+                                }
+                                if (splitDate.length == 3 && splitDate[0].trim() == "NH") {
+                                    htmlTextPost += '<td class="SSdateheadHoliday"><a href="#" class="hreflink"  onclick="UpdateShiftDetails(' + splitDate[1] + ')"></i>' + splitDate[0] + '</a></td>';
+                                }
+                                if (splitDate.length == 3 && splitDate[0].trim() == "WH") {
+                                    htmlTextPost += '<td class="SSdateheadHoliday"><a href="#" class="hreflink"  onclick="UpdateShiftDetails(' + splitDate[1] + ')"></i>' + splitDate[0] + '</a></td>';
+                                }
+                                if (splitDate.length == 3 && splitDate[0].trim() == "FH") {
+                                    htmlTextPost += '<td class="SSdateheadHoliday"><a href="#" class="hreflink"  onclick="UpdateShiftDetails(' + splitDate[1] + ')"></i>' + splitDate[0] + '</a></td>';
+                                }
+                            }
+
+
+                      
+                        }   
+                        else if (datevalue1 == null)
+                        {
+                            htmlTextPost += '<td align="center" valign="middle" class="SSdateheadtime"></td>';
+                        }
+                        datecount++;
+                    });
+                    htmlTextPost += '<tr></tr>';
+                    
+                });
+
+                htmlTextPost += '</tr></table>';
+                $('#tbllogReport').html(htmlTextPost);
+  
+            }
+            else {
+
+                $('#tbllogReport').append("<tr><td colspan='5' class='gridrow1'>No Records Found</td></tr>");
+            }
+            preventDefaultClick();
+
+        }
+        function preventDefaultClick() {
+            $('.hreflink').click(function (e) {
+                e.preventDefault();//prevent default click
+            });
+        }   
+        function UpdateShiftDetails(id)
+        {
+            $("#txttime").prop('disabled', false);
+            $('#ddlshifttype').find('option').not(':first').remove();
+            LoadDdls('/UploadExcelSheet/GetShiftType', $('#ddlshifttype'), 'ID_ShiftType', 'ShiftType');
+            $("#ddlshifttype").change(function () {
+              
+                var ShiftTypeText = $("#ddlshifttype option:selected").text();
+                if(ShiftTypeText=="In-Shift")
+                {
+                    $("#divdate").removeClass("ErrorFocus");
+                    $("#divtime").removeClass("ErrorFocus");
+              
+                    $("#txttime").prop('disabled', false);
+               
+                    $("#txttime").val(localStorage.getItem("StartTime"));
+                }
+                else {
+                  
+                    $("#txttime").prop('disabled', true);
+                    $("#divdate").removeClass("ErrorFocus");
+                    $("#divtime").removeClass("ErrorFocus");
+                    $("#txttime").val("");
+
+                }
+
+            });
+
+           
+            $("#divpopup").fadeIn();
+            $("#divcontent").css("filter", "blur(1px)");
+            $("#divcontent").prop('disabled', true);
+            $.ajax({
+                type: "POST",
+                url: "/UploadExcelSheet/GetSingleDateShift",
+                data: { ColumnId:id },
+                success: function (response) {
+                   
+                    var EmployeeShiftDetails = $.parseJSON(response.result);
+
+                    var teamname=EmployeeShiftDetails[0].SDShiftTeam;
+                   
+                    $("#divteamid").text(teamname);
+
+                    $("#idtextName").val(EmployeeShiftDetails[0].EmpName);
+                    $("#idtextName").prop("disabled", true);
+                    $("#ddlshifttype").val(EmployeeShiftDetails[0].FK_ShiftType);
+                    localStorage.setItem("ShiftStarTime", EmployeeShiftDetails[0].SDShiftStartTime);
+                    localStorage.setItem("ShiftEndTime", EmployeeShiftDetails[0].SDShiftEndTime);
+                    localStorage.setItem("OldShiftType", EmployeeShiftDetails[0].FK_ShiftType);
+                    localStorage.setItem("Team", EmployeeShiftDetails[0].SDShiftTeam);
+                    localStorage.setItem("Id",id);
+                    if (EmployeeShiftDetails[0].FK_ShiftType == 2) {
+                        $("#txtdate").val(EmployeeShiftDetails[0].StartDate);
+                        $("#txttime").val(EmployeeShiftDetails[0].ShiftStartTime);
+                        localStorage.setItem("StartTime", EmployeeShiftDetails[0].ShiftStartTime);
+                    }
+                    else {
+                      
+                        $("#txttime").val("");
+                        $("#txtdate").val(EmployeeShiftDetails[0].StartDate);
+              
+                    }
+                   
+
+
+                   },
+                failure: function (response) {
+
+                },
+                error: function (response) {
+
+                }
+            });
+
+            
+        }
+        function funClose()
+        {
+            $("#txttime").prop('disabled', false);
+            ClearAllControlValues('divShiftChange');
+            $("#lblMessage").text("");
+            $("#divcontent").show();
+            $("#divpopup").fadeOut();
+            $("#divcontent").css("filter", "blur(0px)");
+            $("#divcontent").prop('disabled', false);
+            $("#divdate").removeClass("ErrorFocus");
+            $("#divtime").removeClass("ErrorFocus");
+            $("#btnAddShift").show();
+            $("#btnSave").hide();
+            $("#btnClear").hide();
+            $("#btnUpdate").show();
+           
+        }
+
+        function reloadShiftDetails()
+        {
+                $("#diverror").text("");
+                var monthVal = localStorage.getItem("Monthval");
+                var yearVal = localStorage.getItem("Yearval");
+            
+                    $.ajax({
+                        type: "POST",
+                        url: "/UploadExcelSheet/GetShiftDetails",
+                        data: { MonthVal: monthVal, YearVal: yearVal },
+                        success: function (response) {
+                            if (response.flag == -1) {
+                                $("#diverror").text("No Record Found");
+                                //  alert("No Record Found");
+                                $("#ddlYears").val("");
+                                $("#ddlMonths").val("");
+                                $("#tbllogReport").hide();
+                                //location.reload(true);
+
+                            }
+                            else if (response.flag == -2) {
+                                $("#diverror").text("some error occurs");
+                                //alert("some error occurs");
+
+                            }
+                            else {
+                                $("#diverror").text("");
+                                var ShiftDetails = $.parseJSON(response.result);
+
+                                $("#tbllogReport").show();
+                                ClearAllControlValues('divShiftChange');
+                                $("#lblMessage").text("");
+                                $("#divcontent").show();
+                                $("#divpopup").fadeOut();
+                                $("#divcontent").css("filter", "blur(0px)");
+                                $("#divcontent").prop('disabled', false);
+                                $("#btnAddShift").show();
+                                $("#btnSave").hide();
+                               
+                                BindShiftDetails(ShiftDetails);
+                                //localStorage.clear();
+                            }
+
+
+                        },
+                        failure: function (response) {
+
+                        },
+                        error: function (response) {
+
+                        }
+                    });
+                
+           
+        }
+    </script>
+    <div class="container" id="maindivid">
+        <div class="calcontentmaindiv">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="callabel">Month</div>
+                   
+                        <div class="inputtextdiv" id="divMonths">
+                            <select class="calentextbox" id="ddlMonths" onclick="this.setAttribute('value', this.value);">
+                                <option value="">Please choose..</option>
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                            @*<input class="calentextbox" type="month">*@
+                        </div>
+</div>
+                <div class="col-md-3">
+                    <div class="callabel">Year</div>
+
+                    <div class="inputtextdiv" id="divYears">
+                        <select class="calentextbox" id="ddlYears" onclick="this.setAttribute('value', this.value);">
+                            <option value="">Please choose..</option>
+                        </select>
+                            @*<input class="calentextbox" type="year">*@
+                          </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="sspace"></div>
+                    <div class="btnmaindiv"><button id="btnsubmit" class="submitbtn">Submit</button></div>
+
+                </div>
+            </div>
+            <div id="diverror" style="color:red;"></div>
+        </div>
+       
+    </div>
+    <div class="maincontentdiv" id="divcontent">
+
+        <div class="SSgridmaindiv" id="tbllogReport">
+           
+               @*<table width="1500px" border="0" cellspacing="0" cellpadding="0" id="tbllogReport">
+            <tbody>
+                <tr class="SSgridheaderbg">
+                    <td rowspan="2" width="8%" class="SSdatehead">Date</td>
+                    <td colspan="3" class="SSdateheadDBA">DBA</td>
+
+                    <td colspan="2" class="SSdateheadAPP">APP Support</td>
+
+                    <td colspan="6" class="SSdateheadMONI">Monitoring</td>
+
+                    <td colspan="3" class="SSdateheadINFO">Informatica</td>
+
+                </tr>*@
+                @*<tr class="SSgridheaderbg">
+
+                    <td class="SSdateheadDBAsub">Bidul</td>
+                    <td class="SSdateheadDBAsub">Sreejith</td>
+                    <td class="SSdateheadDBAsub">Ramaswamy</td>
+                    <td class="SSdateheadAPPsub">Ajith</td>
+                    <td class="SSdateheadAPPsub">Antony</td>
+                    <td class="SSdateheadMONIsub">Aneesh</td>
+                    <td class="SSdateheadMONIsub">Jerin</td>
+                    <td class="SSdateheadMONIsub">Rahul</td>
+                    <td class="SSdateheadMONIsub">Devanarayan</td>
+                    <td class="SSdateheadMONIsub">Pranav</td>
+                    <td class="SSdateheadMONIsub">Amal</td>
+                    <td class="SSdateheadINFOsub">Durga</td>
+                    <td class="SSdateheadINFOsub">Prashant</td>
+                    <td class="SSdateheadINFOsub">Stinu</td>
+                </tr>*@
+                @*<tr class="SSgridheaderbg1">
+                <td align="center" valign="middle" class="SSdateheadday"><p>Mon</p>May 01</td>
+                <td class="SSdateheadtime"><a href="#"> <i class="fas fa-moon"></i> 02:00:11:00</a></td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 10:00:19:00</a></td>
+                <td class="SSdateheadcompoff">Compoff</td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 10:00:19:00</a></td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 10:00:19:00</a></td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 10:00:19:00</a></td>
+                <td class="SSdateheadHoliday">N-H</td>
+                <td class="SSdateheadtime"><a href="#"> <i class="fas fa-moon"></i> 02:00:11:00</a></td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 10:00:19:00</a></td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 10:00:19:00</a></td>
+                <td class="SSdateheadoff">Off</td>
+                <td class="SSdateheadtime"><a href="#"> <i class="fas fa-moon"></i> 02:00:11:00</a></td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 10:00:19:00</a></td>
+                <td class="SSdateheadleave">Leave</td>
+            </tr>*@
+                @*<tr class="SSgridheaderbg2">
+                <td align="center" valign="middle" class="SSdateheadday"><p>Tue</p>May 02</td>
+                <td class="SSdateheadcompoff">Compoff</td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 07:30:16:30</a></td>
+                <td class="SSdateheadtime"><a href="#"> <i class="fas fa-moon"></i> 02:00:11:00</a></td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 07:30:16:30</a></td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 07:30:16:30</a></td>
+                <td class="SSdateheadHoliday">F-H</td>
+                <td class="SSdateheadtime"><a href="#"> <i class="fas fa-moon"></i> 02:00:11:00</a></td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 07:30:16:30</a></td>
+                <td class="SSdateheadtime"><a href="#"> <i class="fas fa-moon"></i> 02:00:11:00</a></td>
+                <td class="SSdateheadoff">Off</td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 07:30:16:30</a></td>
+                <td class="SSdateheadleave">Leave</td>
+                <td class="SSdateheadtime"><a href="#"> <i class="fas fa-moon"></i> 02:00:11:00</a></td>
+                <td class="SSdateheadtime"><a href="#"><i class="fas fa-sun"></i> 07:30:16:30</a></td>
+            </tr>
+            <tr class="SSgridheaderbg1">
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+            </tr>*@
+                @*</tbody>
+                </table>*@
+            </div>
+
+      
+       
+
+    </div>
+    <div class="popupmaindiv" id="divpopup" style="display:none;border: none;width:30%;">
+        <div class="popupclosebtn"><a href="#" class="hreflink" onclick="funClose();"><i class="fas fa-times" style="color:black;"></i></a></div>
+        @*<div class="popupclosebtn1"><a href="#" class="hreflink" onclick="funCloseq();"><i class="fas fa-plus" style="color:deepskyblue;"></i></a></div>*@
+        <div class="popupheading" id="divteamid"></div>
+        <div class="popupsubdiv" id="divShiftChange" >
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="callabel">Name</div>
+                    <div class="inputtextdiv" id="divtextname"><input class="calentextbox" type="text" id="idtextName"></div>
+                </div>
+                <div class="col-md-12">
+                    <div class="callabel">Shift Type</div>
+                    <div class="inputtextdiv" id="divshiftType">
+                        <select class="calentextbox" id="ddlshifttype" onclick="this.setAttribute('value', this.value);">
+                            <option value="0">Please choose..</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="callabel">Start Date</div>
+                    <div class="inputtextdiv" id="divdate"><input class="calentextbox" id="txtdate" type="text" ></div>
+                </div>
+                <div class="col-md-12">
+                    <div class="callabel">Satrt Time</div>
+                    <div class="inputtextdiv" id="divtime"><input class="calentextbox" id="txttime" type="text"></div>
+                </div>
+                @*<div class="col-md-12">
+
+                    <div class="btnmaindiv"><button class="updatebtn" id="btnUpdate">Update</button></div>
+
+                </div>*@
+                <div class="col-md-12">
+                    <p id="lblMessage" class="lblMessage"></p>
+                    <span id="loader"></span>
+                    <button title="Add" class="submitbtn" id="btnAddShift"><i class="fas fa-plus"></i></button>
+                    <button title="Save" class="submitbtn" id="btnSave"><i class="far fa-save"></i></button>
+                    <button title="Delete" class="submitbtn" id="btnDelete"><i class="fas fa-trash-alt"></i></button>
+                    <button title="Update" class="submitbtn" id="btnUpdate"><i class="fas fa-check"></i></button>
+                    <button title="Cancel" class="submitbtn" id="btnClear"><i class="far fa-times-circle"></i></button>
+                </div>
+
+                </div>
+        </div>
+    </div>
+    
+</body>
+</html>
+
+
